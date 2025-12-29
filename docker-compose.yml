@@ -1,0 +1,24 @@
+# RabbitMQ 컨테이너 설정
+# - 학습용 최소 구성
+# - 운영용은 클러스터 구성 필요 (별도 파일로 분리 권장)
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management    # management = 웹UI 포함 버전
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"      # 메시지 통신 포트 (택배 넣고 빼는 문)
+      - "15672:15672"    # 웹 관리화면 포트 (CCTV 모니터)
+    environment:
+      RABBITMQ_DEFAULT_USER: guest      # 기본 계정 (운영시 변경 필수)
+      RABBITMQ_DEFAULT_PASS: guest      # 기본 비번 (운영시 변경 필수)
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq   # 컨테이너 꺼져도 데이터 유지
+    healthcheck:                          # "살아있니?" 체크 설정
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 10s     # 10초마다 체크
+      timeout: 5s       # 5초 안에 응답 없으면 실패
+      retries: 5        # 5번 실패하면 unhealthy 상태
+
+volumes:
+  rabbitmq_data:    # 데이터 저장소 (메시지, 설정 등)

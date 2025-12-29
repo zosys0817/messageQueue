@@ -1,0 +1,33 @@
+# ================================================
+# 메시지큐 학습 프로젝트 설정
+# ================================================
+
+[project]
+name = "message-queue"
+version = "0.1.0"
+description = "RabbitMQ 메시지큐 학습 (인프라/DevOps)"
+requires-python = ">=3.11"
+
+# 필수 패키지 (최소한만)
+dependencies = [
+    "pika>=1.3.0",           # RabbitMQ 클라이언트 (택배함 열쇠)
+    "python-dotenv>=1.0.0",  # .env 파일 읽기
+]
+
+# 테스트용 (선택)
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",         # 테스트 도구
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/message_queue"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-v"

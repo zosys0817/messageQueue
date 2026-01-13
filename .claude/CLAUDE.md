@@ -48,6 +48,8 @@
 
 ## Commands
 
+### 학습용 (Docker)
+
 ```bash
 # 1. RabbitMQ 실행
 docker-compose up -d
@@ -66,6 +68,22 @@ pip install pika python-dotenv
 pytest -v
 ```
 
+### 운영용 (클러스터)
+
+```bash
+# 1. 클러스터 설정 (3대 서버 각각)
+sudo scripts/cluster/setup-cluster.sh [node1|node2|node3]
+
+# 2. 클러스터 상태
+sudo rabbitmqctl cluster_status
+
+# 3. 헬스체크
+sudo scripts/cluster/health-check.sh
+
+# 4. 백업
+sudo scripts/cluster/backup-rabbitmq.sh
+```
+
 ## 테스트 시나리오
 
 1. **연결**: RabbitMQ에 접속되는가?
@@ -74,14 +92,40 @@ pytest -v
 
 ---
 
-## [DevOps] 운영 시 추가 고려사항
+## 운영 환경 (클러스터)
 
-> 학습 단계에서는 무시해도 됨. 운영 배포 전 체크
+### 구성
 
-| 항목 | 학습용 | 운영용 |
-|------|--------|--------|
+- **환경**: 온프레미스 RHEL/CentOS/Rocky Linux
+- **노드**: 3대 서버 (192.168.1.11-13)
+- **네트워크**: 같은 서브넷
+- **데이터 지속성**: 하이브리드 (메모리 우선 + 디스크 옵션)
+- **모니터링**: Prometheus + Grafana
+
+### 가이드 문서
+
+| 문서 | 내용 |
+|------|------|
+| [운영 클러스터 구성](../docs/rabbitmq-cluster-production-guide.md) | 전체 설정 가이드 |
+| [rabbitmq.conf](../configs/cluster/rabbitmq.conf) | 클러스터 설정 템플릿 |
+| [haproxy.cfg](../configs/cluster/haproxy.cfg) | 로드밸런서 설정 |
+
+### 스크립트
+
+| 스크립트 | 용도 |
+|---------|------|
+| setup-cluster.sh | 클러스터 자동 구성 |
+| backup-rabbitmq.sh | 일일 백업 (Cron) |
+| health-check.sh | 헬스체크 모니터링 |
+
+### 학습용 vs 운영용 비교
+
+| 항목 | 학습용 | 운영용 (클러스터) |
+|------|--------|-----------------|
 | 계정 | guest/guest | 별도 계정 생성 필수 |
-| 데이터 | 컨테이너 볼륨 | 외부 스토리지 or 클러스터 |
-| 고가용성 | 단일 노드 | 클러스터 (3노드 권장) |
+| 노드 수 | 단일 노드 | 3노드 클러스터 |
+| 데이터 | 컨테이너 볼륨 | 디스크 지속성 + 복제 |
+| 고가용성 | 없음 | 자동 장애조치 |
 | 모니터링 | 웹UI 수동 확인 | Prometheus + Grafana |
-| 백업 | 없음 | 정책 수립 필요 |
+| 백업 | 없음 | 일일 자동 백업 |
+| 로드밸런서 | 없음 | HAProxy |

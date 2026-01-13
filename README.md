@@ -56,6 +56,7 @@ pytest -v
 |------|------|
 | [인프라 구축 가이드](docs/rabbitmq-infra-guide.md) | DMZ/내부구간 구성, 하드웨어 사양, 방화벽 정책 |
 | [TLS 인증서 가이드](docs/rabbitmq-tls-guide.md) | 인증서 발급, 서버 설정, 클라이언트 연결 |
+| [운영 클러스터 구성 가이드](docs/rabbitmq-cluster-production-guide.md) | 온프레미스 3대 서버 클러스터, 데이터 지속성, 모니터링, 장애 복구 |
 
 ## Stack
 
@@ -68,16 +69,26 @@ pytest -v
 ```
 messageQueue/
 ├── docs/
-│   ├── rabbitmq-infra-guide.md   # 인프라 구축 가이드
-│   └── rabbitmq-tls-guide.md     # TLS 인증서 가이드
+│   ├── rabbitmq-infra-guide.md                    # 인프라 구축 가이드
+│   ├── rabbitmq-tls-guide.md                      # TLS 인증서 가이드
+│   └── rabbitmq-cluster-production-guide.md       # 운영 클러스터 구성 가이드
+├── configs/
+│   └── cluster/
+│       ├── rabbitmq.conf                          # 클러스터 설정 파일
+│       └── haproxy.cfg                            # 로드밸런서 설정
+├── scripts/
+│   └── cluster/
+│       ├── setup-cluster.sh                       # 클러스터 자동 설정
+│       ├── backup-rabbitmq.sh                     # 백업 스크립트
+│       └── health-check.sh                        # 헬스체크 스크립트
 ├── src/message_queue/
 │   ├── __init__.py
-│   └── config.py                 # RabbitMQ 연결 설정
+│   └── config.py                                  # RabbitMQ 연결 설정
 ├── tests/
-│   └── test_connection.py        # 연결 테스트
-├── docker-compose.yml            # RabbitMQ 컨테이너
-├── pyproject.toml                # Python 프로젝트 설정
-└── .env.example                  # 환경변수 템플릿
+│   └── test_connection.py                         # 연결 테스트
+├── docker-compose.yml                             # RabbitMQ 컨테이너 (학습용)
+├── pyproject.toml                                 # Python 프로젝트 설정
+└── .env.example                                   # 환경변수 템플릿
 ```
 
 ## 테스트 시나리오
@@ -88,14 +99,54 @@ messageQueue/
 
 ---
 
-## [DevOps] 운영 시 추가 고려사항
+## 운영 클러스터 구성
 
-> 학습 단계에서는 무시해도 됨. 운영 배포 전 체크
+온프레미스 환경에서 3대 서버로 고가용성 클러스터를 구성하는 방법은 [운영 클러스터 구성 가이드](docs/rabbitmq-cluster-production-guide.md)를 참조하세요.
 
-| 항목 | 학습용 | 운영용 |
-|------|--------|--------|
+**빠른 시작:**
+
+```bash
+# 1. 클러스터 자동 설정 (3대 서버 각각 실행)
+sudo chmod +x scripts/cluster/setup-cluster.sh
+
+# Node 1 (Master)
+sudo ./scripts/cluster/setup-cluster.sh node1
+
+# Node 2, 3 (Mirrors)
+sudo ./scripts/cluster/setup-cluster.sh node2
+sudo ./scripts/cluster/setup-cluster.sh node3
+
+# 2. 클러스터 상태 확인
+sudo rabbitmqctl cluster_status
+
+# 3. 헬스체크 실행
+sudo chmod +x scripts/cluster/health-check.sh
+sudo ./scripts/cluster/health-check.sh
+
+# 4. 백업 설정 (Cron)
+sudo chmod +x scripts/cluster/backup-rabbitmq.sh
+sudo crontab -e
+# 추가: 0 2 * * * /path/to/backup-rabbitmq.sh
+```
+
+**주요 기능:**
+- 3노드 클러스터 자동 구성
+- HAProxy 로드밸런싱
+- Prometheus + Grafana 모니터링
+- 데이터 지속성 전략 (메모리/디스크/하이브리드)
+- 자동 백업 및 복구
+- 장애 대응 시나리오
+
+---
+
+## [DevOps] 학습용 vs 운영용 비교
+
+| 항목 | 학습용 (현재) | 운영용 (클러스터) |
+|------|-------------|-----------------|
 | 계정 | guest/guest | 별도 계정 생성 필수 |
-| 데이터 | 컨테이너 볼륨 | 외부 스토리지 or 클러스터 |
-| 고가용성 | 단일 노드 | 클러스터 (3노드 권장) |
+| 노드 수 | 단일 노드 | 3노드 클러스터 |
+| 데이터 | 컨테이너 볼륨 | 디스크 지속성 + 복제 |
+| 고가용성 | 없음 | 자동 장애조치 |
 | 모니터링 | 웹UI 수동 확인 | Prometheus + Grafana |
-| 백업 | 없음 | 정책 수립 필요 |
+| 백업 | 없음 | 일일 자동 백업 |
+| 로드밸런서 | 없음 | HAProxy |
